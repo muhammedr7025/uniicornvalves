@@ -1,9 +1,9 @@
-// FIXED: CascadingSelector.js - Shows all selections clearly
+// FIXED: CascadingSelector.js - Properly clears child selections
 // Location: src/components/CascadingSelector.js
 // Action: REPLACE with this version
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, X } from 'lucide-react';
 
 function CascadingSelector({ module, onSelect, selectedPath }) {
   const [selections, setSelections] = useState(selectedPath || []);
@@ -92,12 +92,23 @@ function CascadingSelector({ module, onSelect, selectedPath }) {
     }
   }, [module, buildDropdowns]);
 
-  // Handle selection change
+  // Handle selection change - CLEARS ALL CHILD SELECTIONS
   const handleChange = (levelIndex, selectedIndex) => {
+    // Keep selections UP TO (but not including) this level
     const newSelections = selections.slice(0, levelIndex);
+    
+    // Add new selection if not empty
     if (selectedIndex !== '') {
       newSelections.push(parseInt(selectedIndex));
     }
+    
+    // This will clear all selections after this level
+    setSelections(newSelections);
+  };
+
+  // Clear specific selection
+  const clearSelection = (levelIndex) => {
+    const newSelections = selections.slice(0, levelIndex);
     setSelections(newSelections);
   };
 
@@ -141,12 +152,25 @@ function CascadingSelector({ module, onSelect, selectedPath }) {
         return (
           <div key={index} className={`${isSelected ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-200'} rounded-lg p-3 transition-all`}>
             {/* Level Header */}
-            <div className="flex items-center gap-2 mb-2">
-              {isSelected && <CheckCircle className="text-green-600" size={18} />}
-              <label className="block text-sm font-semibold text-gray-700">
-                {index + 1}. {level.title}
-                {!level.isRequired && <span className="text-gray-400 text-xs ml-1">(Optional)</span>}
-              </label>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {isSelected && <CheckCircle className="text-green-600" size={18} />}
+                <label className="block text-sm font-semibold text-gray-700">
+                  {index + 1}. {level.title}
+                  {!level.isRequired && <span className="text-gray-400 text-xs ml-1">(Optional)</span>}
+                </label>
+              </div>
+              
+              {/* Clear button */}
+              {isSelected && (
+                <button
+                  onClick={() => clearSelection(index)}
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition"
+                  title="Clear this and all following selections"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
 
             {/* Dropdown */}
