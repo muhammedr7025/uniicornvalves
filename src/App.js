@@ -1,6 +1,6 @@
-// FILE #6: REPLACE EXISTING FILE
+// VERIFIED FILE: App.js
 // Location: src/App.js
-// Action: REPLACE the existing App.js with this code
+// Action: REPLACE with this verified version
 
 import React, { useState } from 'react';
 import { FileText, LogOut } from 'lucide-react';
@@ -9,7 +9,7 @@ import AdminDashboard from './components/AdminDashboard';
 import EmployeeDashboard from './components/EmployeeDashboard';
 import './App.css';
 
-// Initial mock data with tree structure
+// Initial mock data with CORRECT tree structure
 const INITIAL_DATA = {
   customers: [
     { id: 1, name: 'Acme Corporation', email: 'contact@acme.com', phone: '555-0100' },
@@ -18,27 +18,47 @@ const INITIAL_DATA = {
   modules: [
     {
       id: 1,
-      name: 'Module A - Basic Valves',
-      description: 'Standard valve configuration',
+      name: 'Module A - Valve Selection',
+      description: 'Choose valve type, material, and size',
       tree: {
         title: 'Valve Type',
         children: [
           {
             id: 'ball-valves',
             name: 'Ball Valves',
-            title: 'Size',
+            price: 500,
+            title: 'Material',
             children: [
-              { id: 'ball-2', name: '2-inch', price: 500 },
-              { id: 'ball-4', name: '4-inch', price: 800 }
+              {
+                id: 'ball-ss',
+                name: 'Stainless Steel',
+                price: 300,
+                title: 'Size',
+                children: [
+                  { id: 'ball-ss-2', name: '2-inch', price: 200 },
+                  { id: 'ball-ss-4', name: '4-inch', price: 400 }
+                ]
+              },
+              {
+                id: 'ball-brass',
+                name: 'Brass',
+                price: 200,
+                title: 'Size',
+                children: [
+                  { id: 'ball-brass-2', name: '2-inch', price: 150 },
+                  { id: 'ball-brass-4', name: '4-inch', price: 300 }
+                ]
+              }
             ]
           },
           {
             id: 'gate-valves',
             name: 'Gate Valves',
-            title: 'Pressure',
+            price: 600,
+            title: 'Pressure Rating',
             children: [
-              { id: 'gate-std', name: 'Standard', price: 600 },
-              { id: 'gate-hp', name: 'High Pressure', price: 1200 }
+              { id: 'gate-std', name: 'Standard (150 PSI)', price: 300 },
+              { id: 'gate-hp', name: 'High Pressure (300 PSI)', price: 800 }
             ]
           }
         ]
@@ -46,27 +66,29 @@ const INITIAL_DATA = {
     },
     {
       id: 2,
-      name: 'Module B - Advanced Controls',
-      description: 'Automated control systems',
+      name: 'Module B - Control Systems',
+      description: 'Select control type and configuration',
       tree: {
         title: 'Control Type',
         children: [
           {
             id: 'manual',
             name: 'Manual Controls',
+            price: 1000,
             title: 'Configuration',
             children: [
-              { id: 'manual-basic', name: 'Basic', price: 3000 },
-              { id: 'manual-adv', name: 'Advanced', price: 5000 }
+              { id: 'manual-basic', name: 'Basic Setup', price: 500 },
+              { id: 'manual-adv', name: 'Advanced Setup', price: 1500 }
             ]
           },
           {
-            id: 'auto',
+            id: 'automated',
             name: 'Automated Controls',
-            title: 'Level',
+            price: 3000,
+            title: 'Automation Level',
             children: [
-              { id: 'auto-semi', name: 'Semi-Automatic', price: 6000 },
-              { id: 'auto-full', name: 'Fully Automatic', price: 10000 }
+              { id: 'auto-semi', name: 'Semi-Automatic', price: 2000 },
+              { id: 'auto-full', name: 'Fully Automatic', price: 4000 }
             ]
           }
         ]
@@ -80,22 +102,18 @@ function App() {
   const [customers, setCustomers] = useState(INITIAL_DATA.customers);
   const [modules, setModules] = useState(INITIAL_DATA.modules);
 
-  // Handle user login
   const handleLogin = (user) => {
     setCurrentUser(user);
   };
 
-  // Handle user logout
   const handleLogout = () => {
     setCurrentUser(null);
   };
 
-  // If not logged in, show login screen
   if (!currentUser) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
-  // Main app layout for logged-in users
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}

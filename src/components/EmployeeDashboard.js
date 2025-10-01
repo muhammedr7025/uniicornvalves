@@ -1,6 +1,6 @@
-// FILE #5: REPLACE EXISTING FILE
+// UPDATED FILE #3: REPLACE EXISTING
 // Location: src/components/EmployeeDashboard.js
-// Action: REPLACE the existing EmployeeDashboard.js with this code
+// Action: REPLACE with this new version (cumulative pricing)
 
 import React, { useState } from 'react';
 import { FileText } from 'lucide-react';
@@ -19,21 +19,16 @@ function EmployeeDashboard({ customers, modules }) {
     }));
   };
 
-  // Calculate total price
-  const calculateTotal = () => {
+  // Calculate total price across all modules
+  const calculateGrandTotal = () => {
     return Object.values(moduleSelections).reduce((sum, selection) => {
-      return sum + (selection && selection.item ? selection.item.price : 0);
+      return sum + (selection ? selection.total : 0);
     }, 0);
   };
 
-  // Check if all required modules are selected
-  const areAllModulesSelected = () => {
-    for (const module of modules) {
-      if (!moduleSelections[module.id] || !moduleSelections[module.id].item) {
-        return false;
-      }
-    }
-    return true;
+  // Check if at least one module is selected
+  const hasAnySelection = () => {
+    return Object.values(moduleSelections).some(selection => selection !== null);
   };
 
   // Generate the quote
@@ -43,24 +38,26 @@ function EmployeeDashboard({ customers, modules }) {
       return;
     }
 
-    if (!areAllModulesSelected()) {
-      alert('Please complete selections for all modules');
+    if (!hasAnySelection()) {
+      alert('Please select at least one option from any module');
       return;
     }
 
     const customer = customers.find(c => c.id === parseInt(selectedCustomer));
-    const total = calculateTotal();
+    const total = calculateGrandTotal();
 
-    // Build quote items
-    const quoteItems = modules.map(module => {
-      const selection = moduleSelections[module.id];
-      return {
-        moduleName: module.name,
-        moduleDescription: module.description,
-        selectedPath: selection.fullPath,
-        price: selection.item.price
-      };
-    });
+    // Build quote items - only include modules with selections
+    const quoteItems = modules
+      .filter(module => moduleSelections[module.id])
+      .map(module => {
+        const selection = moduleSelections[module.id];
+        return {
+          moduleName: module.name,
+          moduleDescription: module.description,
+          breakdown: selection.breakdown,
+          moduleTotal: selection.total
+        };
+      });
 
     setGeneratedQuote({
       quoteNumber: `QT-${Date.now()}`,
@@ -119,30 +116,25 @@ function EmployeeDashboard({ customers, modules }) {
           ))}
         </div>
 
-        {/* Total Display */}
-        {Object.keys(moduleSelections).length > 0 && (
+        {/* Grand Total Display */}
+        {hasAnySelection() && (
           <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 mt-6">
             <div className="flex justify-between items-center">
               <span className="text-lg font-semibold text-gray-700">
-                Total Estimate:
+                Grand Total:
               </span>
               <span className="text-3xl font-bold text-green-600">
-                ${calculateTotal().toLocaleString()}
+                ${calculateGrandTotal().toLocaleString()}
               </span>
             </div>
-            {!areAllModulesSelected() && (
-              <p className="text-sm text-amber-600 mt-2">
-                ⚠️ Complete all module selections to generate quote
-              </p>
-            )}
           </div>
         )}
 
         <button
           onClick={generateQuote}
-          disabled={!selectedCustomer || !areAllModulesSelected()}
+          disabled={!selectedCustomer || !hasAnySelection()}
           className={`w-full mt-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition ${
-            selectedCustomer && areAllModulesSelected()
+            selectedCustomer && hasAnySelection()
               ? 'bg-green-600 text-white hover:bg-green-700'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
@@ -174,45 +166,66 @@ function EmployeeDashboard({ customers, modules }) {
             </div>
           </div>
 
-          <table className="w-full mb-6">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Module
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Selection
-                </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
-                  Price
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {generatedQuote.items.map((item, index) => (
-                <tr key={index}>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="font-medium">{item.moduleName}</div>
-                    <div className="text-xs text-gray-500">{item.moduleDescription}</div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {item.selectedPath}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right font-semibold">
-                    ${item.price.toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* Quote Items with Breakdown */}
+          <div className="space-y-6 mb-6">
+            {generatedQuote.items.map((item, moduleIndex) => (
+              <div key={moduleIndex} className="border border-gray-200 rounded-lg p-4">
+                <div className="mb-3">
+                  <h3 className="font-bold text-lg text-gray-800">{item.moduleName}</h3>
+                  <p className="text-sm text-gray-600">{item.moduleDescription}</p>
+                </div>
 
+                {/* Breakdown Table */}
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                        Level
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                        Selection
+                      </th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600">
+                        Price
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {item.breakdown.map((breakdown, idx) => (
+                      <tr key={idx}>
+                        <td className="px-3 py-2 text-sm text-gray-600">
+                          {breakdown.level}
+                        </td>
+                        <td className="px-3 py-2 text-sm font-medium text-gray-800">
+                          {breakdown.name}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-right font-semibold">
+                          ${breakdown.price.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-50">
+                      <td colSpan="2" className="px-3 py-2 text-sm font-bold text-gray-700">
+                        Module Subtotal
+                      </td>
+                      <td className="px-3 py-2 text-sm text-right font-bold text-green-600">
+                        ${item.moduleTotal.toLocaleString()}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+
+          {/* Grand Total */}
           <div className="flex justify-end">
-            <div className="bg-green-50 rounded-lg p-4 min-w-64">
+            <div className="bg-green-50 rounded-lg p-4 min-w-80">
               <div className="flex justify-between items-center">
                 <span className="text-xl font-bold text-gray-700">
-                  Total Amount:
+                  Grand Total:
                 </span>
-                <span className="text-3xl font-bold text-green-600">
+                <span className="text-4xl font-bold text-green-600">
                   ${generatedQuote.total.toLocaleString()}
                 </span>
               </div>

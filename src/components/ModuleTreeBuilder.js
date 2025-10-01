@@ -1,16 +1,16 @@
-// FILE #1: NEW FILE
+// UPDATED FILE #1: REPLACE EXISTING
 // Location: src/components/ModuleTreeBuilder.js
-// Action: CREATE THIS FILE
+// Action: REPLACE with this new version (cumulative pricing)
 
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
 
 function ModuleTreeBuilder({ tree, onChange }) {
   const [expandedNodes, setExpandedNodes] = useState({});
 
   // Add child node
   const addChild = (path) => {
-    const newTree = JSON.parse(JSON.stringify(tree)); // Deep clone
+    const newTree = JSON.parse(JSON.stringify(tree));
     const parent = getNodeByPath(newTree, path);
     
     if (!parent.children) {
@@ -20,7 +20,8 @@ function ModuleTreeBuilder({ tree, onChange }) {
     parent.children.push({
       id: `node-${Date.now()}`,
       name: 'New Item',
-      title: '' // Title for next level
+      price: 0,
+      title: ''
     });
     
     onChange(newTree);
@@ -36,7 +37,7 @@ function ModuleTreeBuilder({ tree, onChange }) {
 
   // Delete node
   const deleteNode = (path) => {
-    if (path.length === 0) return; // Can't delete root
+    if (path.length === 0) return;
     
     const newTree = JSON.parse(JSON.stringify(tree));
     const parentPath = path.slice(0, -1);
@@ -56,11 +57,6 @@ function ModuleTreeBuilder({ tree, onChange }) {
     return current;
   };
 
-  // Check if node is leaf (has price)
-  const isLeaf = (node) => {
-    return node.price !== undefined && node.price !== null && node.price !== '';
-  };
-
   // Toggle expand/collapse
   const toggleExpand = (pathKey) => {
     setExpandedNodes(prev => ({
@@ -74,7 +70,6 @@ function ModuleTreeBuilder({ tree, onChange }) {
     const pathKey = path.join('-');
     const isExpanded = expandedNodes[pathKey];
     const hasChildren = node.children && node.children.length > 0;
-    const nodeIsLeaf = isLeaf(node);
 
     return (
       <div key={pathKey} className="ml-4">
@@ -96,43 +91,40 @@ function ModuleTreeBuilder({ tree, onChange }) {
             value={node.name || ''}
             onChange={(e) => updateNode(path, 'name', e.target.value)}
             className="px-2 py-1 border border-gray-300 rounded text-sm flex-1"
-            placeholder="Item name"
+            placeholder="Item name (e.g., Toyota)"
           />
 
-          {/* Price Input (only for leaf nodes) */}
-          {!hasChildren && (
+          {/* Price Input - ALWAYS SHOWN */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500">$</span>
             <input
               type="number"
               step="0.01"
               value={node.price || ''}
-              onChange={(e) => updateNode(path, 'price', parseFloat(e.target.value) || '')}
+              onChange={(e) => updateNode(path, 'price', parseFloat(e.target.value) || 0)}
               className="px-2 py-1 border border-gray-300 rounded text-sm w-24"
               placeholder="Price"
             />
-          )}
+          </div>
 
-          {/* Level Title (for parent nodes) */}
-          {!nodeIsLeaf && (
-            <input
-              type="text"
-              value={node.title || ''}
-              onChange={(e) => updateNode(path, 'title', e.target.value)}
-              className="px-2 py-1 border border-blue-300 rounded text-sm w-32"
-              placeholder="Next level title"
-            />
-          )}
+          {/* Next Level Title */}
+          <input
+            type="text"
+            value={node.title || ''}
+            onChange={(e) => updateNode(path, 'title', e.target.value)}
+            className="px-2 py-1 border border-blue-300 rounded text-sm w-32"
+            placeholder="Next level title"
+          />
 
           {/* Action Buttons */}
           <div className="flex gap-1">
-            {!nodeIsLeaf && (
-              <button
-                onClick={() => addChild(path)}
-                className="p-1 text-green-600 hover:bg-green-50 rounded"
-                title="Add child"
-              >
-                <Plus size={16} />
-              </button>
-            )}
+            <button
+              onClick={() => addChild(path)}
+              className="p-1 text-green-600 hover:bg-green-50 rounded"
+              title="Add child option"
+            >
+              <Plus size={16} />
+            </button>
             {path.length > 0 && (
               <button
                 onClick={() => deleteNode(path)}
@@ -158,13 +150,13 @@ function ModuleTreeBuilder({ tree, onChange }) {
   return (
     <div className="space-y-4">
       <div className="bg-blue-50 p-3 rounded-lg text-sm">
-        <p className="font-semibold mb-1">How to build tree:</p>
+        <p className="font-semibold mb-1">How to build tree with cumulative pricing:</p>
         <ul className="list-disc ml-4 space-y-1 text-gray-700">
-          <li><strong>Item name:</strong> Name of the option (e.g., "Toyota", "Red")</li>
-          <li><strong>Next level title:</strong> Label for child level (e.g., "Brand", "Color")</li>
-          <li><strong>Price:</strong> Only appears when item has no children (leaf node)</li>
-          <li><strong>➕ Add child:</strong> Add subcategory/option under this item</li>
-          <li><strong>🗑️ Delete:</strong> Remove this item and all its children</li>
+          <li><strong>Item name:</strong> Name of option (e.g., "Toyota", "Camry", "Red")</li>
+          <li><strong>Price ($):</strong> Price for THIS item (prices add up cumulatively)</li>
+          <li><strong>Next level title:</strong> Label for child dropdown (e.g., "Model", "Color")</li>
+          <li><strong>➕ Add child:</strong> Add next level options (optional - employee can stop here)</li>
+          <li><strong>Example:</strong> Brand ($5,000) + Model ($20,000) + Color ($500) = Total $25,500</li>
         </ul>
       </div>
 

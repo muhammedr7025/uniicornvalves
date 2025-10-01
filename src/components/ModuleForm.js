@@ -1,6 +1,6 @@
-// FILE #3: REPLACE EXISTING FILE
+// UPDATED FILE #5: REPLACE EXISTING
 // Location: src/components/ModuleForm.js
-// Action: REPLACE the existing ModuleForm.js with this code
+// Action: REPLACE with this new version (cumulative pricing validation)
 
 import React, { useState } from 'react';
 import ModuleTreeBuilder from './ModuleTreeBuilder';
@@ -28,7 +28,7 @@ function ModuleForm({ module, onClose, onSave }) {
       return;
     }
 
-    // Validate that all leaf nodes have prices
+    // Validate tree structure
     const validation = validateTree(formData.tree);
     if (!validation.valid) {
       alert(validation.message);
@@ -40,27 +40,37 @@ function ModuleForm({ module, onClose, onSave }) {
     onClose();
   };
 
-  // Validate tree structure
+  // Validate tree structure - all nodes must have prices
   const validateTree = (node, path = []) => {
-    if (!node.children || node.children.length === 0) {
-      // Leaf node - must have price
-      if (!node.price || node.price <= 0) {
+    // Check if node has children
+    if (node.children && node.children.length > 0) {
+      // Parent node - must have title for next level
+      if (!node.title && path.length > 0) {
         return {
           valid: false,
-          message: `Item "${node.name}" must have a price greater than 0`
-        };
-      }
-    } else {
-      // Parent node - must have title and check children
-      if (!node.title) {
-        return {
-          valid: false,
-          message: `Category "${node.name || 'unnamed'}" must have a "Next level title"`
+          message: `Item "${node.name || 'unnamed'}" has children but no "Next level title"`
         };
       }
 
       // Validate all children
       for (const child of node.children) {
+        // Check if child has a name
+        if (!child.name || child.name.trim() === '') {
+          return {
+            valid: false,
+            message: 'All items must have a name'
+          };
+        }
+
+        // Check if child has a price
+        if (child.price === undefined || child.price === null || child.price < 0) {
+          return {
+            valid: false,
+            message: `Item "${child.name}" must have a price (can be 0 or greater)`
+          };
+        }
+
+        // Recursively validate children
         const childValidation = validateTree(child, [...path, child.name]);
         if (!childValidation.valid) {
           return childValidation;
@@ -90,7 +100,7 @@ function ModuleForm({ module, onClose, onSave }) {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="Module A - Basic Valves"
+                placeholder="Module A - Valve Selection"
               />
             </div>
 
@@ -103,15 +113,27 @@ function ModuleForm({ module, onClose, onSave }) {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="Description of the module"
+                placeholder="Choose valve type, material, and size"
               />
             </div>
+          </div>
+
+          {/* Cumulative Pricing Info Box */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-sm font-semibold text-green-800 mb-2">
+              💰 Cumulative Pricing System
+            </p>
+            <ul className="text-xs text-green-700 space-y-1">
+              <li>• <strong>Every item has a price</strong> - Prices add up as employee selects deeper levels</li>
+              <li>• <strong>Optional depth</strong> - Employee can stop at any level</li>
+              <li>• <strong>Example:</strong> Brand ($500) + Model ($300) + Color ($200) = Total $1,000</li>
+            </ul>
           </div>
 
           {/* Tree Builder */}
           <div>
             <h4 className="text-lg font-semibold mb-3 text-gray-800">
-              Module Structure (Tree)
+              Module Structure (Tree with Cumulative Pricing)
             </h4>
             <ModuleTreeBuilder
               tree={formData.tree}
