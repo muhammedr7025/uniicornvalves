@@ -7,6 +7,7 @@ export const generatePDF = (quoteData) => {
   const doc = new jsPDF();
   const { selections, currency, total } = quoteData;
 
+  // --- Header ---
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
   doc.text('Unicorn Valves - Quote', 14, 22);
@@ -15,6 +16,7 @@ export const generatePDF = (quoteData) => {
   doc.text(`Quote Number: ${quoteData.quoteNumber}`, 14, 30);
   doc.text(`Date: ${quoteData.date}`, 14, 35);
   
+  // --- Customer Info ---
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('Customer Information', 14, 45);
@@ -27,29 +29,35 @@ export const generatePDF = (quoteData) => {
         ['GST Number', quoteData.customerGst || 'N/A'],
     ],
     theme: 'plain',
-    styles: { fontSize: 10 },
+    styles: { fontSize: 10, cellPadding: 2 },
+    bodyStyles: { fontStyle: 'bold' }
   });
 
+  // --- Selections Table ---
   const tableBody = [];
-  const addItem = (category, name, details, priceInr) => {
+  const addItem = (category, name, details) => {
     if (name) {
-      let displayPrice = '-';
-      if(priceInr) {
-        const convertedPrice = currency === 'USD' ? parseFloat(priceInr) / 88.73 : parseFloat(priceInr);
-        displayPrice = `${currency} ${convertedPrice.toFixed(2)}`;
-      }
-      tableBody.push([category, `${name} ${details || ''}`, priceInr ? `₹${priceInr}` : '-']);
+      tableBody.push([category, `${name} ${details || ''}`]);
     }
   };
 
-  if (selections.body || selections.bonnet || selections.trim_plug) {
-    addItem('Component', selections.body?.name, `(Wt: ${selections.body?.weight}, MC: ₹${selections.body?.machining_charge})`);
-    addItem('Component', selections.bonnet?.name, `(Wt: ${selections.bonnet?.weight}, MC: ₹${selections.bonnet?.machining_charge})`);
-    addItem('Trim', selections.trim_plug?.name, `(Plug - Wt: ${selections.trim_plug?.weight}, MC: ₹${selections.trim_plug?.machining_charge})`);
-    addItem('Trim', selections.trim_seat?.name, `(Seat - Wt: ${selections.trim_seat?.weight}, MC: ₹${selections.trim_seat?.machining_charge})`);
-    addItem('Trim', selections.trim_cage?.name, `(Cage - Wt: ${selections.trim_cage?.weight}, MC: ₹${selections.trim_cage?.machining_charge})`);
-    addItem('Trim', selections.trim_stem?.name, `(Stem - Wt: ${selections.trim_stem?.weight}, MC: ₹${selections.trim_stem?.machining_charge})`);
-  }
+  const addCustomCost = (name, cost) => {
+    if (cost && parseFloat(cost.price) > 0) {
+      const details = cost.notes ? `(Notes: ${cost.notes})` : '';
+      tableBody.push(['Custom Cost', `${name} ${details}`, `₹${parseFloat(cost.price).toFixed(2)}`]);
+    }
+  };
+
+  addItem('Model / Type', selections.type?.name);
+  addItem('Series', selections.series?.name, `(Rate: ₹${selections.series?.rate}/unit)`);
+  
+  addItem('Component', selections.body?.name, `(Wt: ${selections.body?.weight}, MC: ₹${selections.body?.machining_charge})`);
+  addItem('Component', selections.bonnet?.name, `(Wt: ${selections.bonnet?.weight}, MC: ₹${selections.bonnet?.machining_charge})`);
+  
+  addItem('Trim', selections.trim_plug?.name, `(Plug - Wt: ${selections.trim_plug?.weight}, MC: ₹${selections.trim_plug?.machining_charge})`);
+  addItem('Trim', selections.trim_seat?.name, `(Seat - Wt: ${selections.trim_seat?.weight}, MC: ₹${selections.trim_seat?.machining_charge})`);
+  addItem('Trim', selections.trim_cage?.name, `(Cage - Wt: ${selections.trim_cage?.weight}, MC: ₹${selections.trim_cage?.machining_charge})`);
+  addItem('Trim', selections.trim_stem?.name, `(Stem - Wt: ${selections.trim_stem?.weight}, MC: ₹${selections.trim_stem?.machining_charge})`);
   
   const items = [
     { cat: 'Fitting', item: selections.studs }, { cat: 'Fitting', item: selections.nuts },
@@ -57,13 +65,11 @@ export const generatePDF = (quoteData) => {
     { cat: 'Finishing', item: selections.painting }, { cat: 'Actuator', item: selections.actuatorDiaphragm },
     { cat: 'Actuator', item: selections.actuatorPiston }
   ];
-  items.forEach(f => addItem(f.cat, f.item?.name, '', f.item?.price));
+  items.forEach(f => addItem(f.cat, f.item?.name, `(+₹${f.item?.price})`));
 
   if (selections.customCosts) {
     Object.entries(selections.customCosts).forEach(([name, cost]) => {
-      if (parseFloat(cost.price) > 0) {
-        addItem('Custom Cost', name, cost.notes ? `(${cost.notes})` : '', cost.price);
-      }
+      addCustomCost(name, cost);
     });
   }
 
@@ -74,8 +80,12 @@ export const generatePDF = (quoteData) => {
     theme: 'striped',
     styles: { fontSize: 9 },
     headStyles: { fillColor: [41, 128, 186] },
+    columnStyles: {
+      2: { halign: 'right' }
+    }
   });
 
+  // --- Total ---
   const finalY = doc.autoTable.previous.finalY;
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
@@ -85,6 +95,7 @@ export const generatePDF = (quoteData) => {
     200, finalY + 15, { align: 'right' }
   );
 
+  // --- Footer ---
   const pageCount = doc.internal.getNumberOfPages();
   for(let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -93,5 +104,7 @@ export const generatePDF = (quoteData) => {
     doc.text('Thank you for your business!', 200, 287, { align: 'right' });
   }
 
-  doc.save(`Quote-${quoteData.quoteNumber}.pdf`);
+  // *** THIS IS THE CHANGE ***
+  // Instead of doc.save(), this opens the PDF in a new tab.
+  doc.output('dataurlnewwindow');
 };
