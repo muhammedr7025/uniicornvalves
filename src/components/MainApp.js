@@ -1,10 +1,8 @@
-// FIXED: MainApp.js - No Warnings
-// Location: src/components/MainApp.js
-// Action: CREATE NEW FILE
+// src/components/MainApp.js
 
-import React, { useState, useEffect } from 'react';
-import { FileText, LogOut, Home, Package, FileText as QuoteIcon } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FileText, LogOut, Home, Package, FileText as QuoteIcon, AlertTriangle } from 'lucide-react';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import Dashboard from './Dashboard';
@@ -12,36 +10,65 @@ import AdminDashboard from './AdminDashboard';
 import EmployeeDashboard from './EmployeeDashboard';
 import QuoteHistory from './QuoteHistory';
 
+const fetchCollection = async (collectionName) => {
+    const snapshot = await getDocs(collection(db, collectionName));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
 function MainApp() {
   const { currentUser, userRole, logout } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const [customers, setCustomers] = useState([]);
-  const [modules, setModules] = useState([]);
+  const [settings, setSettings] = useState({ customCostTypes: [] });
+  const [pricingData, setPricingData] = useState({
+      types: [], body: [], bonnet: [], trim_plug: [], trim_seat: [],
+      trim_cage: [], trim_stem: [], studs: [], nuts: [], casket: [],
+      painting: [], actuatorDiaphragm: [], actuatorPiston: [], packingStandard: [],
+  });
 
-  useEffect(() => {
-    loadData();
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const settingsDoc = await getDoc(doc(db, 'app_settings', 'global'));
+      if (settingsDoc.exists()) setSettings(settingsDoc.data());
+
+      setCustomers(await fetchCollection('customers'));
+      
+      const fetchedPricingData = {
+          types: await fetchCollection('pricing_types'),
+          body: await fetchCollection('pricing_body'),
+          bonnet: await fetchCollection('pricing_bonnet'),
+          trim_plug: await fetchCollection('pricing_trim_plug'),
+          trim_seat: await fetchCollection('pricing_trim_seat'),
+          trim_cage: await fetchCollection('pricing_trim_cage'),
+          trim_stem: await fetchCollection('pricing_trim_stem'),
+          studs: await fetchCollection('pricing_studs'),
+          nuts: await fetchCollection('pricing_nuts'),
+          casket: await fetchCollection('pricing_casket'),
+          painting: await fetchCollection('pricing_painting'),
+          actuatorDiaphragm: await fetchCollection('pricing_actuators_diaphragm'),
+          actuatorPiston: await fetchCollection('pricing_actuators_piston'),
+          packingStandard: await fetchCollection('pricing_packing_standard'),
+      };
+      setPricingData(fetchedPricingData);
+
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Failed to load data from the database. This is likely a Firestore permissions issue.');
+    } finally {
+        setLoading(false);
+    }
   }, []);
 
-  const loadData = async () => {
-    try {
-      // Load customers
-      const customersSnapshot = await getDocs(collection(db, 'customers'));
-      setCustomers(customersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-      // Load modules
-      const modulesSnapshot = await getDocs(collection(db, 'modules'));
-      setModules(modulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    } catch (error) {
-      console.error('Error loading data:', error);
-    }
-  };
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    try { await logout(); } catch (error) { console.error('Logout error:', error); }
   };
 
   const navigation = userRole === 'admin' ? [
@@ -54,89 +81,60 @@ function MainApp() {
     { id: 'quotes', name: 'My Quotes', icon: QuoteIcon }
   ];
 
+  const renderContent = () => {
+    if (loading) {
+      return <div className="text-center p-10 font-semibold text-gray-600">Loading application data...</div>;
+    }
+    if (error) {
+        return (
+            <div className="bg-red-50 border-l-4 border-red-400 p-6 rounded-r-lg">
+                <div className="flex">
+                    <div className="py-1"><AlertTriangle className="h-6 w-6 text-red-500"/></div>
+                    <div className="ml-3">
+                        <h3 className="text-lg font-bold text-red-800">Application Error</h3>
+                        <p className="text-sm text-red-700 mt-2">{error}</p>
+                        <button onClick={loadData} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Try Again</button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    
+    switch(currentView) {
+        case 'dashboard': return <Dashboard userRole={userRole} customers={customers} />;
+        case 'manage': return userRole === 'admin' ? <AdminDashboard customers={customers} settings={settings} pricingData={pricingData} onDataChange={loadData} /> : null;
+        case 'generate': return userRole === 'employee' ? <EmployeeDashboard customers={customers} settings={settings} pricingData={pricingData} /> : null;
+        case 'quotes': return <QuoteHistory userRole={userRole} />;
+        default: return <Dashboard userRole={userRole} customers={customers} />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation Bar */}
       <nav className="bg-white shadow-md border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-indigo-600 to-purple-600 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg">
-                <FileText className="text-white" size={24} />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  Unicorn Valves
-                </h1>
-                <p className="text-xs text-gray-500">{userRole === 'admin' ? 'Admin Panel' : 'Employee Portal'}</p>
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <span className="font-bold text-xl text-indigo-600">Unicorn Valves</span>
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                {navigation.map((item) => (
+                  <button key={item.id} onClick={() => setCurrentView(item.id)} className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${ currentView === item.id ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}`}>
+                    <item.icon className="mr-2 h-5 w-5" /> {item.name}
+                  </button>
+                ))}
               </div>
             </div>
-
-            {/* User Info & Logout */}
-            <div className="flex items-center gap-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-700">{currentUser.email}</p>
-                <p className="text-xs text-gray-500 capitalize">{userRole}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition font-medium"
-              >
-                <LogOut size={18} />
-                <span className="hidden sm:inline">Logout</span>
+            <div className="flex items-center">
+              <span className="text-sm text-gray-600 mr-4">Welcome, {currentUser.email} ({userRole})</span>
+              <button onClick={handleLogout} className="flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-red-600 bg-red-100 hover:bg-red-200">
+                <LogOut className="h-5 w-5 mr-1" /> Logout
               </button>
             </div>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="flex gap-2 mt-4 border-t border-gray-100 pt-4">
-            {navigation.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setCurrentView(item.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
-                  currentView === item.id
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <item.icon size={18} />
-                {item.name}
-              </button>
-            ))}
           </div>
         </div>
       </nav>
-
-      {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {currentView === 'dashboard' && (
-          <Dashboard 
-            userRole={userRole} 
-            customers={customers}
-            modules={modules}
-          />
-        )}
-        
-        {userRole === 'admin' && currentView === 'manage' && (
-          <AdminDashboard
-            customers={customers}
-            setCustomers={setCustomers}
-            modules={modules}
-            setModules={setModules}
-            onDataChange={loadData}
-          />
-        )}
-        
-        {userRole === 'employee' && currentView === 'generate' && (
-          <EmployeeDashboard
-            customers={customers}
-            modules={modules}
-          />
-        )}
-        
-        {currentView === 'quotes' && <QuoteHistory userRole={userRole} />}
+        {renderContent()}
       </main>
     </div>
   );
