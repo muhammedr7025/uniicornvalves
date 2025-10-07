@@ -7,7 +7,7 @@ import { db } from '../config/firebase';
 
 function HierarchicalDataManager({ title, structure, data, collectionName, leafFields = [] }) {
   const [items, setItems] = useState([]);
-  const [newItemForms, setNewItemForms] = useState({}); // Tracks open 'add new' forms
+  const [newItemForms, setNewItemForms] = useState({});
 
   useEffect(() => {
     setItems(JSON.parse(JSON.stringify(data[0]?.data || [])));
@@ -25,12 +25,11 @@ function HierarchicalDataManager({ title, structure, data, collectionName, leafF
 
   const handleItemChange = (path, field, value) => {
     let newItems = [...items];
-    let currentLevel = newItems;
-    for (let i = 0; i < path.length - 1; i++) {
-      currentLevel = currentLevel.find(item => item.name === path[i]).children;
-    }
-    const itemToUpdate = currentLevel.find(item => item.name === path[path.length - 1]);
-    if (itemToUpdate) itemToUpdate[field] = value;
+    let currentLevel = { children: newItems };
+    path.forEach(p => {
+        currentLevel = currentLevel.children.find(item => item.name === p);
+    });
+    if (currentLevel) currentLevel[field] = value;
     setItems(newItems);
   };
 
@@ -51,7 +50,7 @@ function HierarchicalDataManager({ title, structure, data, collectionName, leafF
     }
     currentLevel.push(newChild);
     setItems(newItems);
-    setNewItemForms({ ...newItemForms, [path.join('.')]: false }); // Close the form
+    setNewItemForms({ ...newItemForms, [path.join('.')]: false });
   };
 
   const handleDeleteItem = (path) => {

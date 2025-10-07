@@ -5,14 +5,14 @@ import { Tag, Trash2, Plus, Save } from 'lucide-react';
 import { collection, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
-function TypeManager({ data, onDataChange }) {
+function TypeManager({ initialData, onDataChange }) {
   const [types, setTypes] = useState([]);
   const [newTypeName, setNewTypeName] = useState('');
   const [newSeries, setNewSeries] = useState({});
 
   useEffect(() => {
-    setTypes(JSON.parse(JSON.stringify(data || [])));
-  }, [data]);
+    setTypes(JSON.parse(JSON.stringify(initialData || [])));
+  }, [initialData]);
 
   const handleLocalUpdate = (typeId, seriesIndex, field, value) => {
     setTypes(prevTypes => prevTypes.map(t => {
@@ -29,7 +29,7 @@ function TypeManager({ data, onDataChange }) {
       const docRef = doc(db, 'pricing_types', type.id);
       await updateDoc(docRef, { name: type.name, series: type.series });
       alert(`✅ Type "${type.name}" updated successfully!`);
-      onDataChange();
+      // No full reload, user sees instant change.
     } catch (e) {
       alert('❌ Error updating type.');
     }
@@ -41,7 +41,7 @@ function TypeManager({ data, onDataChange }) {
           await addDoc(collection(db, 'pricing_types'), { name: newTypeName, series: [] });
           setNewTypeName('');
           alert('✅ New type added!');
-          onDataChange();
+          onDataChange(); // Reload data to get the new item with its ID
       } catch (e) {
           alert('❌ Error adding new type.');
       }
@@ -52,7 +52,7 @@ function TypeManager({ data, onDataChange }) {
     try {
       await deleteDoc(doc(db, 'pricing_types', typeId));
       alert('✅ Type deleted!');
-      onDataChange();
+      onDataChange(); // Reload data to remove the item from the list
     } catch (e) {
       alert('❌ Error deleting type.');
     }
@@ -64,7 +64,6 @@ function TypeManager({ data, onDataChange }) {
       alert('Please enter series name and rate.');
       return;
     }
-
     setTypes(prevTypes => prevTypes.map(t => {
         if (t.id === typeId) {
             return { ...t, series: [...t.series, { ...seriesToAdd, id: `s${Date.now()}` }] };
